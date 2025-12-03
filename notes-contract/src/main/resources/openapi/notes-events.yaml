@@ -1,0 +1,133 @@
+components:
+  schemas:
+    NoteCreatedEvent:
+      type: object
+      description: Event emitted when a note is created
+      required:
+        - eventId
+        - eventType
+        - timestamp
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          example: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        eventType:
+          type: string
+          const: NOTE_CREATED
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        data:
+          type: object
+          required:
+            - noteId
+            - title
+            - authorId
+            - status
+          properties:
+            noteId:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            title:
+              type: string
+              example: "Thoughts on Digital Gardens"
+            contentHash:
+              type: string
+              description: SHA256 hash of content for deduplication
+              example: "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef"
+            authorId:
+              type: string
+              format: uuid
+              example: "98765432-e89b-12d3-a456-426614174000"
+            status:
+              type: string
+              enum: [DRAFT, SPROUT, EVERGREEN]
+              example: "DRAFT"
+            tags:
+              type: array
+              items:
+                type: string
+              example: ["philosophy", "digital-garden"]
+    
+    NoteUpdatedEvent:
+      type: object
+      description: Event emitted when a note is updated
+      required:
+        - eventId
+        - eventType
+        - timestamp
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          const: NOTE_UPDATED
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required:
+            - noteId
+          properties:
+            noteId:
+              type: string
+              format: uuid
+            titleChanged:
+              type: boolean
+              description: Whether the title was changed
+            contentChanged:
+              type: boolean
+              description: Whether the content was changed
+            statusChanged:
+              type: boolean
+              description: Whether the status was changed
+            oldStatus:
+              type: string
+              enum: [DRAFT, SPROUT, EVERGREEN]
+            newStatus:
+              type: string
+              enum: [DRAFT, SPROUT, EVERGREEN]
+            version:
+              type: integer
+              description: New version number
+              example: 2
+    
+    NoteDeletedEvent:
+      type: object
+      description: Event emitted when a note is deleted
+      required:
+        - eventId
+        - eventType
+        - timestamp
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          const: NOTE_DELETED
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          required:
+            - noteId
+          properties:
+            noteId:
+              type: string
+              format: uuid
+            authorId:
+              type: string
+              format: uuid
+            deletedAt:
+              type: string
+              format: date-time

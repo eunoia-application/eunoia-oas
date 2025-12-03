@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.eunoia.application</groupId>
+    <artifactId>auth-contract</artifactId>
+    <version>1.0.0</version>  <!-- ВЕРСИЯ ЗДЕСЬ! -->
+    <packaging>jar</packaging>
+
+    <name>Eunoia Auth Contract</name>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.eunoia.application</groupId>
+            <artifactId>shared-contract</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources/openapi</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/eunoia-application/eunoia-oas</url>
+        </repository>
+    </distributionManagement>
+
+    <scm>
+        <connection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</connection>
+        <developerConnection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</developerConnection>
+        <url>https://github.com/eunoia-application/eunoia-oas</url>
+        <tag>HEAD</tag>
+    </scm>
+</project>

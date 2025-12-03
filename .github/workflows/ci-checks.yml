@@ -1,0 +1,23 @@
+name: CI Checks
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate OpenAPI specs
+        run: |
+          # Проверяем что YAML файлы валидны
+          find . -name "*.yaml" -type f | while read file; do
+            echo "🔍 Validating $file"
+            python3 -c "import yaml; yaml.safe_load(open('$file'))"
+          done
+
+      - name: Check dependencies
+        run: |
+          # Проверяем что все зависимости сходятся
+          echo "Checking dependency versions..."

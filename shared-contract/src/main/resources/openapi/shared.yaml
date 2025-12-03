@@ -1,0 +1,44 @@
+components:
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+      example: "123e4567-e89b-12d3-a456-426614174000"
+
+    ISO8601DateTime:
+      type: string
+      format: date-time
+      example: "2024-01-15T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
