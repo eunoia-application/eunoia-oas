@@ -1,0 +1,80 @@
+name: 🚀 Deploy Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - shared-contract
+          - notes-contract
+          - tags-contract
+          - auth-contract
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Deploy shared-contract first (if needed)
+        if: inputs.module == 'all' || inputs.module == 'shared-contract'
+        run: |
+          echo "📦 Deploying shared-contract (base dependency)..."
+          cd shared-contract
+          mvn -B clean deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy selected module(s)
+        run: |
+          echo "🚀 Deploying ${{ inputs.module }}..."
+          
+          case "${{ inputs.module }}" in
+            "all")
+              echo "📦 Deploying all modules..."
+              # shared уже задеплоен, деплоим остальные
+              for module in notes-contract tags-contract auth-contract; do
+                echo "📦 Deploying $module..."
+                cd "$module"
+                mvn -B clean deploy -DskipTests
+                cd ..
+              done
+              ;;
+            "shared-contract")
+              echo "✅ shared-contract already deployed in previous step"
+              ;;
+            *)
+              echo "📦 Deploying ${{ inputs.module }}..."
+              cd "${{ inputs.module }}"
+              mvn -B clean deploy -DskipTests
+              ;;
+          esac
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Success summary
+        run: |
+          echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "📦 Module(s): ${{ inputs.module }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "📅 Timestamp: $(date)"
+          echo ""
+          echo "📊 Packages available at:"
+          echo "https://github.com/eunoia-application/eunoia-oas/packages"
