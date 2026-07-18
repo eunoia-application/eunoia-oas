@@ -5,50 +5,22 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.eunoia.application</groupId>
+    <parent>
+        <groupId>com.eunoia.application</groupId>
+        <artifactId>eunoia-oas-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <artifactId>tags-contract</artifactId>
-    <version>1.0.0</version>  <!-- ВЕРСИЯ ЗДЕСЬ! -->
-    <packaging>jar</packaging>
 
     <name>Eunoia Tags Contract</name>
-
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    <description>API тегов для категоризации заметок</description>
 
     <dependencies>
-        <!-- Зависимость от shared -->
         <dependency>
             <groupId>com.eunoia.application</groupId>
             <artifactId>shared-contract</artifactId>
-            <version>1.0.0</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources/openapi</directory>
-                <filtering>false</filtering>
-            </resource>
-        </resources>
-    </build>
-
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/eunoia-application/eunoia-oas</url>
-        </repository>
-    </distributionManagement>
-
-    <scm>
-        <connection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</connection>
-        <developerConnection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</developerConnection>
-        <url>https://github.com/eunoia-application/eunoia-oas</url>
-        <tag>HEAD</tag>
-    </scm>
 </project>

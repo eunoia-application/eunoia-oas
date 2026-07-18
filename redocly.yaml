@@ -1,0 +1,12 @@
+# Конфиг для `redocly lint` (CI + локально). Линтим собранный bundle
+# (api-types/dist/openapi.json): он self-contained (shared-схемы инлайн, внешних
+# $ref нет) и это ровно то, что получает фронт.
+extends:
+  - recommended
+rules:
+  # shared-компоненты (UUID, ISO8601DateTime, ErrorResponse, общие responses) в bundle
+  # могут выглядеть «неиспользуемыми» при пер-файловом дизайне спек — глушим false-positive.
+  no-unused-components: off
+  # Лицензия в info и «боевые» серверы — мягкие напоминания, не ошибки.
+  info-license: off
+  no-server-example.com: warn
