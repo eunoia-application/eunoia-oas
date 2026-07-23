@@ -26,7 +26,7 @@
 
             Semver: additive (новое поле/эндпоинт) = minor, breaking = major, доки = patch.
         -->
-        <revision>2.1.0</revision>
+        <revision>2.2.0</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
@@ -39,6 +39,7 @@
         <module>shared-contract</module>
         <module>auth-contract</module>
         <module>user-contract</module>
+        <module>learning-contract</module>
     </modules>
 
     <!--

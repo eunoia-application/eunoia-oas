@@ -1,7 +1,7 @@
 # Eunoia API types для фронтенда
 
 Фронт потребляет **один** npm-пакет — `@eunoia-application/api-types`. В нём уже лежат
-сгенерённые TypeScript-типы на весь REST API (эндпоинты auth/user + общие схемы).
+сгенерённые TypeScript-типы на весь REST API (эндпоинты auth/user/learning + общие схемы).
 **Кодогенерации на стороне фронта не нужно** — типы готовы к импорту.
 
 > Почему один пакет, а не 3 по числу Maven-модулей: фронт — одно приложение,
@@ -57,6 +57,12 @@ type AuthResponse = components['schemas']['AuthResponse']; // ответ login/r
 type AuthUser = components['schemas']['AuthUser'];         // слим-идентичность в ответе auth
 type UserProfile = components['schemas']['UserProfile'];   // полный профиль (service-user)
 type UserSettings = components['schemas']['UserSettings'];
+
+// Учебное ядро (service-learning):
+type LexemeCard = components['schemas']['LexemeCard'];       // карточка слова: формы/переводы/связи + мой статус
+type TopicView = components['schemas']['TopicView'];         // ветка сада: тема + слова с раскраской
+type GardenLeaf = components['schemas']['GardenLeaf'];       // слово-лист со статусом (цвет листа)
+type MasteryStatus = components['schemas']['MasteryStatus']; // KNOWN | LEARNING | UNKNOWN
 ```
 
 Удобно завести барель-алиасы у себя (`src/shared/api/schema.ts`):
@@ -106,8 +112,19 @@ export async function getMyProfile() {
 
 > Пути в типах — как в контрактах (`/auth/*`, `/users/*`), без хоста.
 > Базовый URL задаёт axios-клиент (`baseURL` — через gateway, напр. `/api/v1`).
-> Публичные auth-эндпоинты (`/auth/login`, `/auth/register`, …) не требуют токена;
-> остальные — `Bearer <JWT>`.
+> Публичные auth-эндпоинты (`/auth/login`, `/auth/register`, `/auth/refresh`, …) не требуют токена;
+> остальные — `Bearer <JWT>`. На `401` дёргай `/auth/refresh` (с `refreshToken` из ответа login/register)
+> и повтори запрос.
+
+### Заметки по доменам
+
+- **Аватар:** `UserProfile.avatarUrl` — готовый URL для `<img src>` (для загруженного файла бэк отдаёт
+  полный URL через gateway, вставляй как есть). Загрузка — `POST /users/me/avatar` (multipart, поле `file`,
+  png/jpg/webp ≤ 2 МБ); публичная отдача байтов `GET /users/{id}/avatar` — без токена.
+- **Учебное ядро (`/learning/*`, всё под токеном):** `GET /learning/lexemes/{id}` — карточка слова;
+  `GET /learning/search?q=` — поиск; `GET /learning/topics` / `GET /learning/topics/{id}` — дерево тем и
+  **ветка сада** (`TopicView.lexemes[].status` = `MasteryStatus` для раскраски); `PUT /learning/mastery/{lexemeId}`
+  (тело `{ status }`) — отметить «знаю/учу»; `GET /learning/mastery` — мой прогресс.
 
 ## 4. Рантайм-спека (опционально)
 
@@ -126,7 +143,7 @@ import spec from '@eunoia-application/api-types/openapi.json' with { type: 'json
 Pin как обычно:
 
 ```json
-{ "devDependencies": { "@eunoia-application/api-types": "^2.0.0" } }
+{ "devDependencies": { "@eunoia-application/api-types": "^2.2.0" } }
 ```
 
 ## Troubleshooting

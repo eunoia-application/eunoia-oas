@@ -16,6 +16,7 @@ eunoia-oas/
 ├── shared-contract/   # Общие типы и компоненты
 ├── auth-contract/     # Контракты аутентификации и жизненного цикла аккаунта
 ├── user-contract/     # Контракты профиля пользователя
+├── learning-contract/ # Контракты учебного ядра: граф знаний + сад (прогресс)
 ├── api-types/         # npm-пакет с TS-типами для фронта (генерируется)
 ├── .github/workflows/ # CI/CD пайплайны
 ├── pom.xml            # Parent + aggregator (lockstep <revision>)
@@ -29,7 +30,7 @@ eunoia-oas/
 
 Один источник правды (YAML-спеки) публикуется в двух форматах:
 
-- **Backend** — 3 Maven JAR с YAML внутри (по модулю на bounded context). Бэк
+- **Backend** — 4 Maven JAR с YAML внутри (по модулю на bounded context). Бэк
   генерит Spring-интерфейсы через `openapi-generator-maven-plugin`.
 - **Frontend** — один npm-пакет `@eunoia-application/api-types` с готовыми `.d.ts` на
   весь REST API. Кодогенерации на стороне фронта не требуется. См. [`FRONTEND.md`](FRONTEND.md).
@@ -38,9 +39,10 @@ eunoia-oas/
 
 | Модуль | Maven Artifact | Описание | Версия |
 |--------|----------------|----------|--------|
-| **shared-contract** | `com.eunoia.application:shared-contract` | Общие схемы (UUID, ISO8601DateTime, ErrorResponse), общие responses | `2.0.0` |
-| **auth-contract** | `com.eunoia.application:auth-contract` | API аутентификации и жизненного цикла аккаунта (Design B — только identity) | `2.0.0` |
-| **user-contract** | `com.eunoia.application:user-contract` | API профиля пользователя (данные, аватар, настройки, экспорт) | `2.0.0` |
+| **shared-contract** | `com.eunoia.application:shared-contract` | Общие схемы (UUID, ISO8601DateTime, ErrorResponse), общие responses | `2.2.0` |
+| **auth-contract** | `com.eunoia.application:auth-contract` | API аутентификации и жизненного цикла аккаунта (Design B — только identity) | `2.2.0` |
+| **user-contract** | `com.eunoia.application:user-contract` | API профиля пользователя (данные, аватар, настройки, экспорт) | `2.2.0` |
+| **learning-contract** | `com.eunoia.application:learning-contract` | API учебного ядра: граф знаний (слова/темы/грамматика) + прогресс и garden-view | `2.2.0` |
 
 > Версии — lockstep: все модули публикуются одной версией (единый `<revision>` в корневом `pom.xml`).
 
@@ -48,7 +50,7 @@ eunoia-oas/
 
 | Пакет | Содержимое | Версия |
 |-------|------------|--------|
-| **`@eunoia-application/api-types`** | TypeScript-типы (`components`/`paths`/`operations`) + bundled `openapi.json` на весь REST API | `2.0.0` |
+| **`@eunoia-application/api-types`** | TypeScript-типы (`components`/`paths`/`operations`) + bundled `openapi.json` на весь REST API (auth/user/learning) | `2.2.0` |
 
 ## 🚀 Быстрый старт
 
@@ -73,17 +75,22 @@ cd eunoia-oas
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>auth-contract</artifactId>
-        <version>2.0.0</version>
+        <version>2.2.0</version>
     </dependency>
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>user-contract</artifactId>
-        <version>2.0.0</version>
+        <version>2.2.0</version>
+    </dependency>
+    <dependency>
+        <groupId>com.eunoia.application</groupId>
+        <artifactId>learning-contract</artifactId>
+        <version>2.2.0</version>
     </dependency>
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>shared-contract</artifactId>
-        <version>2.0.0</version>
+        <version>2.2.0</version>
     </dependency>
 </dependencies>
 ```
@@ -115,7 +122,7 @@ type UserProfile = components['schemas']['UserProfile'];
 Корневой `pom.xml` — parent + aggregator, реактор сам ставит `shared-contract` первым.
 
 ```bash
-# Сборка всех модулей (parent + 3)
+# Сборка всех модулей (parent + 4)
 mvn clean install
 
 # Один модуль + его зависимости
@@ -128,7 +135,7 @@ cd api-types && npm install && npm run build
 ### Версионирование (lockstep)
 
 Единый источник версии — свойство `<revision>` в корневом [`pom.xml`](pom.xml).
-Меняешь его → едут все 3 Maven-артефакта **и** npm `@eunoia-application/api-types`
+Меняешь его → едут все 4 Maven-артефакта **и** npm `@eunoia-application/api-types`
 (его версия деривится из `<revision>` скриптом `api-types/scripts/build-types.mjs`).
 
 Semver: additive = minor, breaking = major, доки = patch. Релиз:
@@ -144,7 +151,7 @@ Semver: additive = minor, breaking = major, доки = patch. Релиз:
 2. Выберите workflow **🚀 Deploy Contracts**
 3. Нажмите **Run workflow**
 
-Один прогон публикует parent + 3 Maven JAR и npm-пакет `@eunoia-application/api-types`.
+Один прогон публикует parent + 4 Maven JAR и npm-пакет `@eunoia-application/api-types`.
 npm-publish идемпотентен: если такая версия уже в registry — шаг пропускается (нужен
 bump `<revision>`).
 
@@ -166,7 +173,7 @@ user-contract/
   (Maven JAR + npm) по `workflow_dispatch`.
 - [`ci-checks.yml`](.github/workflows/ci-checks.yml) — проверки на PR:
   - **contracts** — bundle → `redocly lint` → `tsc` typecheck сгенерированных `.d.ts`
-  - **maven** — `mvn clean install` (parent + 3 модуля)
+  - **maven** — `mvn clean install` (parent + 4 модуля)
   - **breaking-changes** — `oasdiff` base↔head, гейт на major-бамп `<revision>`
 
 Все спецификации следуют стандарту OpenAPI 3.0 и линтуются в собранном виде

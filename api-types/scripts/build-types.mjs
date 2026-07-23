@@ -54,6 +54,7 @@ const shared = readYaml(specPath('shared', 'shared.yaml'));
 const domains = [
   ['auth', 'auth-api.yaml'],
   ['user', 'user-api.yaml'],
+  ['learning', 'learning-api.yaml'],
 ].map(([module, file]) => readYaml(specPath(module, file)));
 
 const COMPONENT_KEYS = ['schemas', 'parameters', 'responses', 'securitySchemes'];

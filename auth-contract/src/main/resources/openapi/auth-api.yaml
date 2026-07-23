@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Auth API
   description: Authentication and authorization for Eunoia (Design B — auth owns identity only)
-  version: 2.0.0
+  version: 2.2.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
