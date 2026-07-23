@@ -12,10 +12,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>tags-contract</artifactId>
+    <artifactId>user-contract</artifactId>
 
-    <name>Eunoia Tags Contract</name>
-    <description>API тегов для категоризации заметок</description>
+    <name>Eunoia User Contract</name>
+    <description>API профиля пользователя (Design B: учётные данные — в auth, профиль — здесь)</description>
 
     <dependencies>
         <dependency>

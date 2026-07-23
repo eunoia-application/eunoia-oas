@@ -3,15 +3,15 @@
  * Собирает единый набор TypeScript-типов для всего Eunoia REST API из OpenAPI-спек.
  *
  * Зачем merge, а не «сгенерить каждый спек отдельно»:
- *   доменные спеки (auth/notes/tags) концептуально опираются на общие компоненты из
+ *   доменные спеки (auth/user) концептуально опираются на общие компоненты из
  *   shared.yaml. Чтобы наружу отдать самодостаточный набор типов (без внешних файлов
  *   рядом), склейку делаем один раз на этапе публикации:
  *     1) сливаем paths всех доменов + components всех спек в один документ;
  *     2) переписываем внешние рефы `shared.yaml#/components/...` → внутренние `#/components/...`;
  *     3) гоним openapi-typescript по самодостаточному документу.
  *
- * Kafka-события (notes-events.yaml) сюда НЕ включаются — это бэкендовый контракт
- * для микросервисов, фронту не нужен (остаётся в JAR notes-contract).
+ * Kafka-события (бэкендовые контракты для микросервисов) сюда НЕ включаются —
+ * фронту не нужны, остаются в соответствующих contract-JAR.
  *
  * Результат (в dist/):
  *   - index.d.ts     — типы (paths / components / operations) для импорта во фронт;
@@ -53,8 +53,7 @@ if (pkg.version !== version) {
 const shared = readYaml(specPath('shared', 'shared.yaml'));
 const domains = [
   ['auth', 'auth-api.yaml'],
-  ['tags', 'tags-api.yaml'],
-  ['notes', 'notes-api.yaml'],
+  ['user', 'user-api.yaml'],
 ].map(([module, file]) => readYaml(specPath(module, file)));
 
 const COMPONENT_KEYS = ['schemas', 'parameters', 'responses', 'securitySchemes'];

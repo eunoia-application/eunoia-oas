@@ -1,0 +1,354 @@
+openapi: 3.0.0
+info:
+  title: User API
+  description: User profile management for Eunoia (Design B — identity lives in auth, profile lives here)
+  version: 2.1.0
+  contact:
+    name: Eunoia Team
+    url: https://github.com/eunoia-application
+tags:
+  - name: Users
+    description: User profile management
+paths:
+  /users/me:
+    get:
+      summary: Get current user profile
+      operationId: getCurrentUser
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        401:
+          description: Unauthorized
+
+    put:
+      summary: Update current user profile
+      operationId: updateCurrentUser
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        200:
+          description: User profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        400:
+          description: Bad Request
+        401:
+          description: Unauthorized
+
+  /users/me/avatar:
+    post:
+      summary: Upload current user avatar
+      operationId: uploadAvatar
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (png/jpg/webp)
+      responses:
+        200:
+          description: Avatar updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        400:
+          description: Unsupported or too large file
+        401:
+          description: Unauthorized
+
+    delete:
+      summary: Remove current user avatar
+      operationId: deleteAvatar
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Avatar removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        401:
+          description: Unauthorized
+
+  /users/{userId}/avatar:
+    get:
+      summary: Get user avatar image (public)
+      description: Отдаёт байты аватара. Публичный (как и публичный профиль). На него ссылается avatarUrl загруженного файла.
+      operationId: getUserAvatar
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Avatar image bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: Avatar not found
+
+  /users/me/settings:
+    put:
+      summary: Update current user settings
+      operationId: updateSettings
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettings'
+      responses:
+        200:
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        401:
+          description: Unauthorized
+
+  /users/me/export:
+    get:
+      summary: Export all my data (GDPR portability)
+      operationId: exportMyData
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: User data export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDataExport'
+        401:
+          description: Unauthorized
+
+  /users/{userId}:
+    get:
+      summary: Get user public profile
+      operationId: getUserProfile
+      tags:
+        - Users
+      security: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: User public profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublicProfile'
+        403:
+          description: Profile is private
+        404:
+          description: User not found
+
+components:
+  schemas:
+    # Полный профиль (владелец). email/username денормализованы из auth через UserRegistered.
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        username:
+          type: string
+          example: "eunoia_user"
+        firstName:
+          type: string
+          nullable: true
+          example: "Alex"
+        lastName:
+          type: string
+          nullable: true
+          example: "Johnson"
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: >-
+            URL аватара относительно API-базы. Для загруженного файла — /users/{userId}/avatar
+            (см. GET). Может быть и внешним URL, если задан напрямую через PUT /users/me.
+        bio:
+          type: string
+          maxLength: 500
+          nullable: true
+        emailVerified:
+          type: boolean
+          description: Synced from auth
+          default: false
+        settings:
+          $ref: '#/components/schemas/UserSettings'
+        stats:
+          $ref: '#/components/schemas/UserStats'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # Публичный профиль (что видят другие). Отдаётся только если profileVisibility=PUBLIC.
+    UserPublicProfile:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 50
+        lastName:
+          type: string
+          maxLength: 50
+        bio:
+          type: string
+          maxLength: 500
+        avatarUrl:
+          type: string
+          format: uri
+          description: Можно задать URL напрямую; для загрузки файла — POST /users/me/avatar
+
+    UserSettings:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [LIGHT, DARK, AUTO]
+          default: AUTO
+          description: UI theme preference
+        interfaceLanguage:
+          type: string
+          description: UI language (BCP-47, напр. en, ru)
+          example: "ru"
+        profileVisibility:
+          type: string
+          enum: [PUBLIC, PRIVATE]
+          default: PRIVATE
+          description: Виден ли профиль другим через /users/{userId}
+        emailNotifications:
+          type: boolean
+          default: true
+        aiSuggestionsEnabled:
+          type: boolean
+          default: true
+
+    # Учебная статистика наполнится из событий service-knowledge (M4). Пока — только активность.
+    UserStats:
+      type: object
+      properties:
+        lastActiveAt:
+          type: string
+          format: date-time
+
+    # Экспорт данных пользователя (право на переносимость). Расширяется по мере появления сервисов.
+    UserDataExport:
+      type: object
+      required:
+        - exportedAt
+        - profile
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication
+
+security:
+  - bearerAuth: []
