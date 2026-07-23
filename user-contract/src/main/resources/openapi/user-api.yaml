@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: User API
   description: User profile management for Eunoia (Design B — identity lives in auth, profile lives here)
-  version: 2.0.0
+  version: 2.1.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -102,6 +102,31 @@ paths:
                 $ref: '#/components/schemas/UserProfile'
         401:
           description: Unauthorized
+
+  /users/{userId}/avatar:
+    get:
+      summary: Get user avatar image (public)
+      description: Отдаёт байты аватара. Публичный (как и публичный профиль). На него ссылается avatarUrl загруженного файла.
+      operationId: getUserAvatar
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Avatar image bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: Avatar not found
 
   /users/me/settings:
     put:
@@ -205,7 +230,9 @@ components:
           type: string
           format: uri
           nullable: true
-          description: Avatar URL (set via POST /users/me/avatar)
+          description: >-
+            URL аватара относительно API-базы. Для загруженного файла — /users/{userId}/avatar
+            (см. GET). Может быть и внешним URL, если задан напрямую через PUT /users/me.
         bio:
           type: string
           maxLength: 500
