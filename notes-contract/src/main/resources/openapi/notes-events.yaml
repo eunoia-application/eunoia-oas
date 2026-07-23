@@ -15,7 +15,7 @@ components:
           example: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
         eventType:
           type: string
-          const: NOTE_CREATED
+          enum: [NOTE_CREATED]
         timestamp:
           type: string
           format: date-time
@@ -67,7 +67,7 @@ components:
           format: uuid
         eventType:
           type: string
-          const: NOTE_UPDATED
+          enum: [NOTE_UPDATED]
         timestamp:
           type: string
           format: date-time
@@ -113,7 +113,7 @@ components:
           format: uuid
         eventType:
           type: string
-          const: NOTE_DELETED
+          enum: [NOTE_DELETED]
         timestamp:
           type: string
           format: date-time

@@ -1,19 +1,9 @@
 name: 🚀 Deploy Contracts
 
+# Lockstep-релиз: весь contracts-репо едет под одной версией (parent pom <revision>).
+# Деплоит parent + 4 Maven-модуля + npm api-types за раз. Версию бампать в pom.xml → <revision>.
 on:
   workflow_dispatch:
-    inputs:
-      module:
-        description: 'Module to deploy'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - shared-contract
-          - notes-contract
-          - tags-contract
-          - auth-contract
 
 jobs:
   deploy:
@@ -27,54 +17,58 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Deploy shared-contract first (if needed)
-        if: inputs.module == 'all' || inputs.module == 'shared-contract'
+      # ─────────────────────────── Maven (backend JARs) ───────────────────────────
+      # Один root-деплой: реактор сам ставит shared-contract первым (он зависимость
+      # остальных) и публикует parent pom (нужен потребителям для резолва дочерних).
+
+      - name: Deploy Maven contracts (parent + 4 modules)
         run: |
-          echo "📦 Deploying shared-contract (base dependency)..."
-          cd shared-contract
+          REVISION=$(mvn -q -N help:evaluate -Dexpression=revision -DforceStdout)
+          echo "📦 Deploying Eunoia contracts v${REVISION} (lockstep)..."
           mvn -B clean deploy -DskipTests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy selected module(s)
+      # ──────────────────────── npm (frontend api-types) ──────────────────────────
+      # Единый пакет @eunoia-application/api-types на весь REST. Версия деривится из
+      # того же pom <revision> (build-types.mjs синхронизирует package.json).
+      # Идемпотентно: если версия уже в registry — publish пропускается.
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@eunoia-application'
+
+      - name: Publish frontend api-types (npm)
         run: |
-          echo "🚀 Deploying ${{ inputs.module }}..."
-          
-          case "${{ inputs.module }}" in
-            "all")
-              echo "📦 Deploying all modules..."
-              # shared уже задеплоен, деплоим остальные
-              for module in notes-contract tags-contract auth-contract; do
-                echo "📦 Deploying $module..."
-                cd "$module"
-                mvn -B clean deploy -DskipTests
-                cd ..
-              done
-              ;;
-            "shared-contract")
-              echo "✅ shared-contract already deployed in previous step"
-              ;;
-            *)
-              echo "📦 Deploying ${{ inputs.module }}..."
-              cd "${{ inputs.module }}"
-              mvn -B clean deploy -DskipTests
-              ;;
-          esac
+          cd api-types
+          npm install --no-audit --no-fund
+          npm run build            # генерит dist/ + синхронит package.json version из pom <revision>
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@eunoia-application/api-types@${VERSION}" version >/dev/null 2>&1; then
+            echo "⏭️  @eunoia-application/api-types@${VERSION} уже опубликован — пропускаю (бампни <revision> для релиза)."
+          else
+            echo "📦 Publishing @eunoia-application/api-types@${VERSION}..."
+            npm publish
+          fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Success summary
         run: |
-          echo "✅ DEPLOYMENT SUCCESSFUL!"
-          echo "📦 Module(s): ${{ inputs.module }}"
+          REVISION=$(node -p "require('./api-types/package.json').version")
+          echo "✅ DEPLOYMENT SUCCESSFUL — Eunoia contracts v${REVISION}"
           echo "👤 Triggered by: ${{ github.actor }}"
-          echo "📅 Timestamp: $(date)"
+          echo "📅 $(date)"
           echo ""
-          echo "📊 Packages available at:"
-          echo "https://github.com/eunoia-application/eunoia-oas/packages"
+          echo "📊 Packages: https://github.com/eunoia-application/eunoia-oas/packages"
+          echo "🔧 Maven (backend): com.eunoia.application:{shared,notes,tags,auth}-contract:${REVISION}"
+          echo "⚛️  npm (frontend):  @eunoia-application/api-types@${REVISION}"

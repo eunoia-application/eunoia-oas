@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.eunoia.application</groupId>
+    <artifactId>eunoia-oas-parent</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+
+    <name>Eunoia OpenAPI Contracts (parent)</name>
+    <description>
+        Aggregator + parent для всех контракт-модулей Eunoia.
+        Lockstep-версионирование: ЕДИНЫЙ источник версии — свойство ${revision} ниже.
+        Бамп всего релиз-трейна (Maven JAR'ы + npm api-types) = правка одной строки.
+    </description>
+
+    <properties>
+        <!--
+            ★ ЕДИНЫЙ ИСТОЧНИК ВЕРСИИ всего contracts-репо (lockstep).
+            Меняешь здесь → все 4 Maven-модуля едут на этот номер.
+            npm-пакет @eunoia-application/api-types берёт версию отсюда же
+            (api-types/scripts/build-types.mjs читает <revision> из этого pom).
+
+            Semver: additive (новое поле/эндпоинт) = minor, breaking = major, доки = patch.
+        -->
+        <revision>1.0.0</revision>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+
+        <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
+    </properties>
+
+    <modules>
+        <module>shared-contract</module>
+        <module>notes-contract</module>
+        <module>tags-contract</module>
+        <module>auth-contract</module>
+    </modules>
+
+    <!--
+        shared-contract — общая зависимость для остальных модулей. Версия и scope
+        управляются здесь, дочерние pom'ы объявляют только groupId+artifactId.
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.eunoia.application</groupId>
+                <artifactId>shared-contract</artifactId>
+                <version>${revision}</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <scm>
+        <connection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</connection>
+        <developerConnection>scm:git:https://github.com/eunoia-application/eunoia-oas.git</developerConnection>
+        <url>https://github.com/eunoia-application/eunoia-oas</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/eunoia-application/eunoia-oas</url>
+        </repository>
+    </distributionManagement>
+
+    <build>
+        <!-- Все модули пакуют только YAML из openapi/ — общий resources-блок. -->
+        <resources>
+            <resource>
+                <directory>src/main/resources/openapi</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <!--
+                flatten-maven-plugin обязателен при ${revision}-версии: подменяет
+                ${revision} на конкретный номер в публикуемом pom (иначе потребитель
+                не зарезолвит артефакт). resolveCiFriendliesOnly — минимальный режим:
+                трогает только revision/sha1/changelist, остальную структуру pom
+                (scm, distributionManagement, dependencyManagement) сохраняет.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${flatten-maven-plugin.version}</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

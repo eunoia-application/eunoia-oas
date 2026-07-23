@@ -1,23 +1,122 @@
 name: CI Checks
+
+# Проверки перед мержем: валидность контрактов + сборка обоих артефактов.
 on:
   pull_request:
+  push:
     branches: [main, develop]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
+  # ─── Контракты: bundle → OpenAPI lint → генерация TS → typecheck ───
+  # Линтим именно собранный bundle (dist/openapi.json): он self-contained
+  # (shared-схемы инлайн, внешних $ref нет) и это ровно то, что получает фронт.
+  contracts:
+    name: OpenAPI + TS types
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate OpenAPI specs
-        run: |
-          # Проверяем что YAML файлы валидны
-          find . -name "*.yaml" -type f | while read file; do
-            echo "🔍 Validating $file"
-            python3 -c "import yaml; yaml.safe_load(open('$file'))"
-          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Check dependencies
+      - name: Build bundle + TS types
+        working-directory: api-types
         run: |
-          # Проверяем что все зависимости сходятся
-          echo "Checking dependency versions..."
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Lint OpenAPI (bundled spec)
+        run: npx --yes @redocly/cli@latest lint api-types/dist/openapi.json
+
+      - name: Typecheck generated .d.ts
+        working-directory: api-types
+        run: npm run typecheck
+
+  # ─── Maven: parent + flatten + 4 модуля собираются ───
+  maven:
+    name: Maven build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build all modules (parent + 4)
+        run: mvn -B clean install
+
+  # ─── Breaking changes: oasdiff bundle(base) vs bundle(PR) ───
+  # Гейт под lockstep-semver: breaking-изменения разрешены ТОЛЬКО вместе с major-бампом
+  # <revision>. Удалил/переименовал/сменил тип поля без major → CI красный.
+  # На первом внедрении (base-ветка ещё без api-types) джоба мягко пропускается.
+  breaking-changes:
+    name: Breaking changes (oasdiff)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout PR (head)
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build head bundle
+        working-directory: api-types
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          cp dist/openapi.json "$RUNNER_TEMP/head.json"
+
+      - name: Build base bundle
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git worktree add base FETCH_HEAD
+          if [ ! -f base/api-types/scripts/build-types.mjs ]; then
+            echo "ℹ️ base-ветка ещё без api-types bundle — пропускаю breaking-check (первое внедрение)."
+            exit 0
+          fi
+          ( cd base/api-types && npm install --no-audit --no-fund && npm run build )
+          cp base/api-types/dist/openapi.json "$RUNNER_TEMP/base.json"
+
+      - name: oasdiff — breaking changes требуют major-бампа
+        run: |
+          if [ ! -f "$RUNNER_TEMP/base.json" ]; then
+            echo "Нет base-спека для сравнения — пропускаю."; exit 0
+          fi
+
+          ver() { sed -n 's:.*<revision>\(.*\)</revision>.*:\1:p' "$1" | head -1; }
+          BASE_VER=$(ver base/pom.xml); HEAD_VER=$(ver pom.xml)
+          echo "base <revision>=$BASE_VER → head <revision>=$HEAD_VER"
+
+          echo "─── oasdiff changelog ───"
+          docker run --rm -v "$RUNNER_TEMP:/specs" tufin/oasdiff changelog \
+            /specs/base.json /specs/head.json || true
+
+          set +e
+          docker run --rm -v "$RUNNER_TEMP:/specs" tufin/oasdiff breaking \
+            /specs/base.json /specs/head.json --fail-on ERR
+          BREAKING=$?
+          set -e
+
+          if [ "$BREAKING" -eq 0 ]; then
+            echo "✅ Нет breaking-изменений."
+            exit 0
+          fi
+
+          if [ "${HEAD_VER%%.*}" -gt "${BASE_VER%%.*}" ]; then
+            echo "✅ Breaking-изменения есть, но major бампнут ($BASE_VER → $HEAD_VER) — ок."
+            exit 0
+          fi
+
+          echo "❌ Breaking-изменения БЕЗ major-бампа ($BASE_VER → $HEAD_VER)."
+          echo "   Подними major в pom.xml <revision>, либо переделай изменение в additive."
+          exit 1
