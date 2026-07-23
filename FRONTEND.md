@@ -1,16 +1,15 @@
 # Eunoia API types для фронтенда
 
 Фронт потребляет **один** npm-пакет — `@eunoia-application/api-types`. В нём уже лежат
-сгенерённые TypeScript-типы на весь REST API (все эндпоинты auth/notes/tags + общие
-схемы). **Кодогенерации на стороне фронта не нужно** — типы готовы к импорту.
+сгенерённые TypeScript-типы на весь REST API (эндпоинты auth/user + общие схемы).
+**Кодогенерации на стороне фронта не нужно** — типы готовы к импорту.
 
-> Почему один пакет, а не 4 по числу Maven-модулей: фронт — одно приложение,
+> Почему один пакет, а не 3 по числу Maven-модулей: фронт — одно приложение,
 > говорящее со всем API сразу. Склейку спек и генерацию типов делаем один раз при
 > публикации (см. `api-types/scripts/build-types.mjs`), а наружу отдаём самодостаточный
 > набор типов + bundled `openapi.json`.
 >
-> Kafka-события (`notes-events.yaml`) в пакет НЕ входят — это бэкендовый контракт для
-> микросервисов.
+> Kafka-события (бэкендовые контракты микросервисов) в пакет НЕ входят — фронту не нужны.
 
 ---
 
@@ -54,11 +53,10 @@ npm install -D @eunoia-application/api-types
 import type { components, paths } from '@eunoia-application/api-types';
 
 // Схемы — самое нужное:
-type Note = components['schemas']['Note'];
-type NoteDetail = components['schemas']['NoteDetail'];
-type Tag = components['schemas']['Tag'];
-type UserProfile = components['schemas']['UserProfile'];
-type AuthResponse = components['schemas']['AuthResponse'];
+type AuthResponse = components['schemas']['AuthResponse']; // ответ login/register: токены + user
+type AuthUser = components['schemas']['AuthUser'];         // слим-идентичность в ответе auth
+type UserProfile = components['schemas']['UserProfile'];   // полный профиль (service-user)
+type UserSettings = components['schemas']['UserSettings'];
 ```
 
 Удобно завести барель-алиасы у себя (`src/shared/api/schema.ts`):
@@ -67,9 +65,8 @@ type AuthResponse = components['schemas']['AuthResponse'];
 import type { components } from '@eunoia-application/api-types';
 
 export type Schemas = components['schemas'];
-export type Note = Schemas['Note'];
-export type Tag = Schemas['Tag'];
 export type UserProfile = Schemas['UserProfile'];
+export type AuthResponse = Schemas['AuthResponse'];
 // ...
 ```
 
@@ -78,12 +75,11 @@ export type UserProfile = Schemas['UserProfile'];
 ```typescript
 import type { paths } from '@eunoia-application/api-types';
 
-type GetNotes = paths['/notes']['get'];
-type NotesQuery = GetNotes['parameters']['query'];                        // { page?, size?, status?, tag?, search?, ... }
-type NotesPage  = GetNotes['responses']['200']['content']['application/json'];
+type GetMe     = paths['/users/me']['get'];
+type MyProfile = GetMe['responses']['200']['content']['application/json'];    // UserProfile
 
-type CreateNote = paths['/notes']['post'];
-type NoteBody   = CreateNote['requestBody']['content']['application/json']; // NoteCreationRequest
+type UpdateMe   = paths['/users/me']['put'];
+type UpdateBody = UpdateMe['requestBody']['content']['application/json'];      // UserUpdateRequest
 ```
 
 ### Пример с axios
@@ -92,25 +88,26 @@ type NoteBody   = CreateNote['requestBody']['content']['application/json']; // N
 import axios from 'axios';
 import type { components } from '@eunoia-application/api-types';
 
-type Note = components['schemas']['Note'];
 type AuthResponse = components['schemas']['AuthResponse'];
+type UserProfile = components['schemas']['UserProfile'];
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080' });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:7777/api/v1' });
 
 export async function login(email: string, password: string) {
   const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
   return data;
 }
 
-export async function getNote(noteId: string) {
-  const { data } = await api.get<Note>(`/notes/${noteId}`);
+export async function getMyProfile() {
+  const { data } = await api.get<UserProfile>('/users/me');
   return data;
 }
 ```
 
-> Пути в типах — как в контрактах (`/auth/*`, `/notes`, `/tags`), без хоста.
-> Базовый URL задаёт axios-клиент (`baseURL`). Публичные auth-эндпоинты
-> (`/auth/login`, `/auth/register`, …) не требуют токена; остальные — `Bearer <JWT>`.
+> Пути в типах — как в контрактах (`/auth/*`, `/users/*`), без хоста.
+> Базовый URL задаёт axios-клиент (`baseURL` — через gateway, напр. `/api/v1`).
+> Публичные auth-эндпоинты (`/auth/login`, `/auth/register`, …) не требуют токена;
+> остальные — `Bearer <JWT>`.
 
 ## 4. Рантайм-спека (опционально)
 
@@ -125,11 +122,11 @@ import spec from '@eunoia-application/api-types/openapi.json' with { type: 'json
 ## Версионирование
 
 `@eunoia-application/api-types` версионируется в lockstep с Maven-контрактами
-(`1.x` ↔ контракты `1.x`), версия деривится из корневого `pom.xml` `<revision>`.
+(`2.x` ↔ контракты `2.x`), версия деривится из корневого `pom.xml` `<revision>`.
 Pin как обычно:
 
 ```json
-{ "devDependencies": { "@eunoia-application/api-types": "^1.0.0" } }
+{ "devDependencies": { "@eunoia-application/api-types": "^2.0.0" } }
 ```
 
 ## Troubleshooting
