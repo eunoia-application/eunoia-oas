@@ -5,7 +5,7 @@ info:
     Учебное ядро Eunoia — канонический граф знаний (Neo4j) + персональный оверлей мастерства
     (garden, Postgres). Единица обучения — СЛОВО (лемма): его части речи (variants) склеены
     в одну карточку, мастерство отмечается по лемме. Чтение графа + garden-view (структура × статус).
-  version: 3.0.0
+  version: 3.1.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -15,12 +15,30 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /learning/bands:
+    get:
+      summary: Блоки топ-слов по частоте (уровни) с моим прогрессом
+      operationId: getBands
+      tags: [Learning]
+      responses:
+        '200':
+          description: Уровни (топ-100, 101–500, …) с total/known/learning
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Band' }
+
   /learning/words:
     get:
-      summary: Все слова по частоте (для просмотра/бандов «топ-100»)
+      summary: Слова по частоте (весь список или блок band=…), с моим статусом
       operationId: listWords
       tags: [Learning]
       parameters:
+        - name: band
+          in: query
+          description: id блока (напр. top-100). Пусто — весь список по частоте.
+          schema: { type: string }
         - name: offset
           in: query
           schema: { type: integer, default: 0 }
@@ -29,10 +47,24 @@ paths:
           schema: { type: integer, default: 100 }
       responses:
         '200':
-          description: Страница слов, отсортированных по частоте
+          description: Страница слов (в блоке или общая), отсортированных по частоте
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WordPage' }
+
+  /learning/study:
+    get:
+      summary: Мой список на изучение (слова, отмеченные «Учить»)
+      operationId: getStudyList
+      tags: [Learning]
+      responses:
+        '200':
+          description: Слова со статусом LEARNING
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WordLeaf' }
 
   /learning/words/{id}:
     get:
@@ -254,7 +286,7 @@ components:
 
     WordLeaf:
       type: object
-      description: Слово-лист (в теме или списке всех слов) с моим статусом — из этого фронт красит сад.
+      description: Слово-лист (в блоке, теме или списке) с моим статусом — из этого фронт красит сад.
       required: [id, lemma, status]
       properties:
         id: { type: string, example: "en:go" }
@@ -264,7 +296,24 @@ components:
           description: Части речи, которые есть у слова
           items: { $ref: '#/components/schemas/PartOfSpeech' }
         cefr: { $ref: '#/components/schemas/Cefr' }
+        topics:
+          type: array
+          description: Темы (категории) слова — для разбивки внутри блока; пусто → «Разное»
+          items: { $ref: '#/components/schemas/TopicRef' }
         status: { $ref: '#/components/schemas/MasteryStatus' }
+
+    Band:
+      type: object
+      description: Блок топ-слов по частоте (уровень) с моим прогрессом.
+      required: [id, label, fromRank, toRank, total, known, learning]
+      properties:
+        id: { type: string, example: "top-100" }
+        label: { type: string, example: "Топ-100" }
+        fromRank: { type: integer, example: 1 }
+        toRank: { type: integer, example: 100 }
+        total: { type: integer, description: "слов в блоке" }
+        known: { type: integer, description: "сколько отмечено «знаю»" }
+        learning: { type: integer, description: "сколько отмечено «учить»" }
 
     WordPage:
       type: object
