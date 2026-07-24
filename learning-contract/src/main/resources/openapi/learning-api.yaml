@@ -187,6 +187,7 @@ components:
         pos: { $ref: '#/components/schemas/PartOfSpeech' }
         cefr: { $ref: '#/components/schemas/Cefr' }
         freqRank: { type: integer, nullable: true }
+        ipa: { type: string, nullable: true, description: "Транскрипция IPA (амер.), напр. /ɡoʊ/" }
         forms:
           type: array
           items: { $ref: '#/components/schemas/Form' }
