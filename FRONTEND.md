@@ -59,9 +59,10 @@ type UserProfile = components['schemas']['UserProfile'];   // полный пр�
 type UserSettings = components['schemas']['UserSettings'];
 
 // Учебное ядро (service-learning):
-type LexemeCard = components['schemas']['LexemeCard'];       // карточка слова: формы/переводы/связи + мой статус
+type LexemeCard = components['schemas']['LexemeCard'];       // карточка слова: ipa/формы/переводы/связи + мой статус
 type TopicView = components['schemas']['TopicView'];         // ветка сада: тема + слова с раскраской
 type GardenLeaf = components['schemas']['GardenLeaf'];       // слово-лист со статусом (цвет листа)
+type GrammarView = components['schemas']['GrammarView'];     // правило: cefr + prerequisites + illustratedBy (слова-примеры)
 type MasteryStatus = components['schemas']['MasteryStatus']; // KNOWN | LEARNING | UNKNOWN
 ```
 
@@ -125,6 +126,10 @@ export async function getMyProfile() {
   `GET /learning/search?q=` — поиск; `GET /learning/topics` / `GET /learning/topics/{id}` — дерево тем и
   **ветка сада** (`TopicView.lexemes[].status` = `MasteryStatus` для раскраски); `PUT /learning/mastery/{lexemeId}`
   (тело `{ status }`) — отметить «знаю/учу»; `GET /learning/mastery` — мой прогресс.
+- **Грамматика (ствол сада):** `GET /learning/grammar` — весь ствол, правила по возрастанию CEFR; у каждого
+  `prerequisites` (id правил, которые учить раньше) — этого хватает нарисовать дерево. `GET /learning/grammar/{id}`
+  — то же правило + `illustratedBy` (слова-примеры, напр. `went/came/…` для Past Simple); в списке `illustratedBy` пуст.
+- **Транскрипция:** `LexemeCard.ipa` — IPA слова (амер., напр. `/ɡoʊ/`); может быть `null`.
 
 ## 4. Рантайм-спека (опционально)
 
@@ -143,7 +148,7 @@ import spec from '@eunoia-application/api-types/openapi.json' with { type: 'json
 Pin как обычно:
 
 ```json
-{ "devDependencies": { "@eunoia-application/api-types": "^2.2.0" } }
+{ "devDependencies": { "@eunoia-application/api-types": "^2.4.0" } }
 ```
 
 ## Troubleshooting

@@ -3,8 +3,9 @@ info:
   title: Learning API
   description: >-
     Учебное ядро Eunoia — канонический граф знаний (Neo4j) + персональный оверлей мастерства
-    (garden, Postgres). Чтение графа, отметка владения словами и garden-view (структура × статус).
-  version: 2.2.0
+    (garden, Postgres). Единица обучения — СЛОВО (лемма): его части речи (variants) склеены
+    в одну карточку, мастерство отмечается по лемме. Чтение графа + garden-view (структура × статус).
+  version: 3.0.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -14,30 +15,49 @@ tags:
 security:
   - bearerAuth: []
 paths:
-  /learning/lexemes/{id}:
+  /learning/words:
     get:
-      summary: Карточка слова (с моим статусом мастерства)
-      operationId: getLexeme
+      summary: Все слова по частоте (для просмотра/бандов «топ-100»)
+      operationId: listWords
+      tags: [Learning]
+      parameters:
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100 }
+      responses:
+        '200':
+          description: Страница слов, отсортированных по частоте
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WordPage' }
+
+  /learning/words/{id}:
+    get:
+      summary: Карточка слова (лемма + части речи внутри + мой статус)
+      operationId: getWord
       tags: [Learning]
       parameters:
         - name: id
           in: path
           required: true
           schema: { type: string }
-          example: "en:go:VERB"
+          example: "en:go"
       responses:
         '200':
-          description: Слово с формами, переводами, связями и моим статусом
+          description: Слово с разновидностями (variants), связями и моим статусом
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/LexemeCard' }
+              schema: { $ref: '#/components/schemas/WordCard' }
         '404':
           description: Слово не найдено
 
   /learning/search:
     get:
       summary: Поиск слов по префиксу леммы
-      operationId: searchLexemes
+      operationId: searchWords
       tags: [Learning]
       parameters:
         - name: q
@@ -54,7 +74,7 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/LexemeRef' }
+                items: { $ref: '#/components/schemas/WordRef' }
 
   /learning/topics:
     get:
@@ -136,16 +156,17 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/MasteryView' }
 
-  /learning/mastery/{lexemeId}:
+  /learning/mastery/{id}:
     put:
-      summary: Отметить владение словом (знаю/учу/не знаю)
+      summary: Отметить владение словом (знаю/учу/не знаю) — по лемме
       operationId: setMastery
       tags: [Learning]
       parameters:
-        - name: lexemeId
+        - name: id
           in: path
           required: true
           schema: { type: string }
+          example: "en:go"
       requestBody:
         required: true
         content:
@@ -184,52 +205,78 @@ components:
         text: { type: string, example: "идти" }
         lang: { type: string, example: "ru" }
 
-    LexemeRef:
+    WordRef:
       type: object
+      description: Лёгкая ссылка на слово (лемма). id — ключ леммы, pos — конкретная часть речи ссылки.
       required: [id, lemma]
       properties:
-        id: { type: string, example: "en:go:VERB" }
+        id: { type: string, example: "en:go" }
         lemma: { type: string, example: "go" }
         pos: { $ref: '#/components/schemas/PartOfSpeech' }
 
-    LexemeCard:
+    WordVariant:
       type: object
-      required: [id, lemma, status]
+      description: Одна часть речи слова — свои переводы, формы и связи.
+      required: [pos]
       properties:
-        id: { type: string, example: "en:go:VERB" }
-        lemma: { type: string }
         pos: { $ref: '#/components/schemas/PartOfSpeech' }
         cefr: { $ref: '#/components/schemas/Cefr' }
         freqRank: { type: integer, nullable: true }
-        ipa: { type: string, nullable: true, description: "Транскрипция IPA (амер.), напр. /ɡoʊ/" }
-        forms:
-          type: array
-          items: { $ref: '#/components/schemas/Form' }
         translations:
           type: array
           items: { $ref: '#/components/schemas/Translation' }
+        forms:
+          type: array
+          items: { $ref: '#/components/schemas/Form' }
         synonyms:
           type: array
-          items: { $ref: '#/components/schemas/LexemeRef' }
+          items: { $ref: '#/components/schemas/WordRef' }
         antonyms:
           type: array
-          items: { $ref: '#/components/schemas/LexemeRef' }
+          items: { $ref: '#/components/schemas/WordRef' }
         hypernyms:
           type: array
-          items: { $ref: '#/components/schemas/LexemeRef' }
-        status:
-          $ref: '#/components/schemas/MasteryStatus'
+          items: { $ref: '#/components/schemas/WordRef' }
 
-    GardenLeaf:
+    WordCard:
       type: object
-      description: Слово-лист в теме с моим статусом — из этого фронт красит сад.
+      description: Карточка слова = лемма + её части речи (variants) + мой статус (по лемме).
       required: [id, lemma, status]
       properties:
-        id: { type: string }
+        id: { type: string, example: "en:go" }
         lemma: { type: string }
-        pos: { $ref: '#/components/schemas/PartOfSpeech' }
+        ipa: { type: string, nullable: true, description: "Транскрипция IPA (амер.), напр. /ɡoʊ/" }
+        freqRank: { type: integer, nullable: true }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+        variants:
+          type: array
+          items: { $ref: '#/components/schemas/WordVariant' }
+
+    WordLeaf:
+      type: object
+      description: Слово-лист (в теме или списке всех слов) с моим статусом — из этого фронт красит сад.
+      required: [id, lemma, status]
+      properties:
+        id: { type: string, example: "en:go" }
+        lemma: { type: string }
+        pos:
+          type: array
+          description: Части речи, которые есть у слова
+          items: { $ref: '#/components/schemas/PartOfSpeech' }
         cefr: { $ref: '#/components/schemas/Cefr' }
         status: { $ref: '#/components/schemas/MasteryStatus' }
+
+    WordPage:
+      type: object
+      description: Страница списка всех слов (по частоте) — для бандов «топ-100 / 100–200 / …».
+      required: [words, total, offset, limit]
+      properties:
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        words:
+          type: array
+          items: { $ref: '#/components/schemas/WordLeaf' }
 
     TopicRef:
       type: object
@@ -244,9 +291,9 @@ components:
       required: [topic]
       properties:
         topic: { $ref: '#/components/schemas/TopicRef' }
-        lexemes:
+        words:
           type: array
-          items: { $ref: '#/components/schemas/GardenLeaf' }
+          items: { $ref: '#/components/schemas/WordLeaf' }
 
     GrammarView:
       type: object
@@ -262,7 +309,7 @@ components:
         illustratedBy:
           type: array
           description: слова-примеры правила (заполняется в детали; в списке пусто)
-          items: { $ref: '#/components/schemas/LexemeRef' }
+          items: { $ref: '#/components/schemas/WordRef' }
 
     MasteryRequest:
       type: object
@@ -272,9 +319,9 @@ components:
 
     MasteryView:
       type: object
-      required: [lexemeId, status]
+      required: [wordId, status]
       properties:
-        lexemeId: { type: string }
+        wordId: { type: string, example: "en:go" }
         status: { $ref: '#/components/schemas/MasteryStatus' }
         updatedAt: { type: string, format: date-time }
 
