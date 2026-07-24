@@ -89,6 +89,20 @@ paths:
         '404':
           description: Тема не найдена
 
+  /learning/grammar:
+    get:
+      summary: Грамматика — весь ствол (правила по возрастанию CEFR)
+      operationId: listGrammar
+      tags: [Learning]
+      responses:
+        '200':
+          description: Список правил
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GrammarView' }
+
   /learning/grammar/{id}:
     get:
       summary: Грамматическое правило
@@ -241,6 +255,14 @@ components:
         id: { type: string }
         name: { type: string }
         cefr: { $ref: '#/components/schemas/Cefr' }
+        prerequisites:
+          type: array
+          description: id правил, которые желательно знать раньше (порядок изучения)
+          items: { type: string }
+        illustratedBy:
+          type: array
+          description: слова-примеры правила (заполняется в детали; в списке пусто)
+          items: { $ref: '#/components/schemas/LexemeRef' }
 
     MasteryRequest:
       type: object
