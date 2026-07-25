@@ -39,10 +39,10 @@ eunoia-oas/
 
 | Модуль | Maven Artifact | Описание | Версия |
 |--------|----------------|----------|--------|
-| **shared-contract** | `com.eunoia.application:shared-contract` | Общие схемы (UUID, ISO8601DateTime, ErrorResponse), общие responses | `2.4.0` |
-| **auth-contract** | `com.eunoia.application:auth-contract` | API аутентификации и жизненного цикла аккаунта (Design B — только identity) | `2.4.0` |
-| **user-contract** | `com.eunoia.application:user-contract` | API профиля пользователя (данные, аватар, настройки, экспорт) | `2.4.0` |
-| **learning-contract** | `com.eunoia.application:learning-contract` | API учебного ядра: граф знаний (слова/темы/грамматика) + прогресс и garden-view | `2.4.0` |
+| **shared-contract** | `com.eunoia.application:shared-contract` | Общие схемы (UUID, ISO8601DateTime, ErrorResponse), общие responses | `3.1.0` |
+| **auth-contract** | `com.eunoia.application:auth-contract` | API аутентификации и жизненного цикла аккаунта (Design B — только identity) | `3.1.0` |
+| **user-contract** | `com.eunoia.application:user-contract` | API профиля пользователя (данные, аватар, настройки, экспорт) | `3.1.0` |
+| **learning-contract** | `com.eunoia.application:learning-contract` | API учебного ядра: граф знаний (слова/темы/грамматика) + прогресс и garden-view | `3.1.0` |
 
 > Версии — lockstep: все модули публикуются одной версией (единый `<revision>` в корневом `pom.xml`).
 
@@ -50,7 +50,7 @@ eunoia-oas/
 
 | Пакет | Содержимое | Версия |
 |-------|------------|--------|
-| **`@eunoia-application/api-types`** | TypeScript-типы (`components`/`paths`/`operations`) + bundled `openapi.json` на весь REST API (auth/user/learning) | `2.4.0` |
+| **`@eunoia-application/api-types`** | TypeScript-типы (`components`/`paths`/`operations`) + bundled `openapi.json` на весь REST API (auth/user/learning) | `3.1.0` |
 
 ## 🚀 Быстрый старт
 
@@ -75,22 +75,22 @@ cd eunoia-oas
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>auth-contract</artifactId>
-        <version>2.4.0</version>
+        <version>3.1.0</version>
     </dependency>
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>user-contract</artifactId>
-        <version>2.4.0</version>
+        <version>3.1.0</version>
     </dependency>
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>learning-contract</artifactId>
-        <version>2.4.0</version>
+        <version>3.1.0</version>
     </dependency>
     <dependency>
         <groupId>com.eunoia.application</groupId>
         <artifactId>shared-contract</artifactId>
-        <version>2.4.0</version>
+        <version>3.1.0</version>
     </dependency>
 </dependencies>
 ```

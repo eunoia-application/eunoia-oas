@@ -58,10 +58,13 @@ type AuthUser = components['schemas']['AuthUser'];         // слим-иден�
 type UserProfile = components['schemas']['UserProfile'];   // полный профиль (service-user)
 type UserSettings = components['schemas']['UserSettings'];
 
-// Учебное ядро (service-learning):
-type LexemeCard = components['schemas']['LexemeCard'];       // карточка слова: ipa/формы/переводы/связи + мой статус
-type TopicView = components['schemas']['TopicView'];         // ветка сада: тема + слова с раскраской
-type GardenLeaf = components['schemas']['GardenLeaf'];       // слово-лист со статусом (цвет листа)
+// Учебное ядро (service-learning). Единица — СЛОВО (лемма); id вида "en:go":
+type WordCard = components['schemas']['WordCard'];           // карточка: ipa + variants[POS] (переводы/формы/связи) + мой статус
+type WordVariant = components['schemas']['WordVariant'];     // одна часть речи слова внутри карточки
+type WordLeaf = components['schemas']['WordLeaf'];           // слово-лист (блок/тема/список): pos[] + topics[] + статус
+type WordPage = components['schemas']['WordPage'];           // страница списка слов (total/offset/limit/words)
+type Band = components['schemas']['Band'];                   // блок топ-слов (уровень) + прогресс (total/known/learning)
+type TopicView = components['schemas']['TopicView'];         // ветка темы: тема + слова (words)
 type GrammarView = components['schemas']['GrammarView'];     // правило: cefr + prerequisites + illustratedBy (слова-примеры)
 type MasteryStatus = components['schemas']['MasteryStatus']; // KNOWN | LEARNING | UNKNOWN
 ```
@@ -122,14 +125,20 @@ export async function getMyProfile() {
 - **Аватар:** `UserProfile.avatarUrl` — готовый URL для `<img src>` (для загруженного файла бэк отдаёт
   полный URL через gateway, вставляй как есть). Загрузка — `POST /users/me/avatar` (multipart, поле `file`,
   png/jpg/webp ≤ 2 МБ); публичная отдача байтов `GET /users/{id}/avatar` — без токена.
-- **Учебное ядро (`/learning/*`, всё под токеном):** `GET /learning/lexemes/{id}` — карточка слова;
-  `GET /learning/search?q=` — поиск; `GET /learning/topics` / `GET /learning/topics/{id}` — дерево тем и
-  **ветка сада** (`TopicView.lexemes[].status` = `MasteryStatus` для раскраски); `PUT /learning/mastery/{lexemeId}`
-  (тело `{ status }`) — отметить «знаю/учу»; `GET /learning/mastery` — мой прогресс.
-- **Грамматика (ствол сада):** `GET /learning/grammar` — весь ствол, правила по возрастанию CEFR; у каждого
-  `prerequisites` (id правил, которые учить раньше) — этого хватает нарисовать дерево. `GET /learning/grammar/{id}`
-  — то же правило + `illustratedBy` (слова-примеры, напр. `went/came/…` для Past Simple); в списке `illustratedBy` пуст.
-- **Транскрипция:** `LexemeCard.ipa` — IPA слова (амер., напр. `/ɡoʊ/`); может быть `null`.
+- **Учебное ядро (`/learning/*`, всё под токеном). Единица — СЛОВО (лемма, id вида `en:go`):**
+  - **Навигация — блоки топ-слов:** `GET /learning/bands` → уровни (топ-100/…/5001–10000) с прогрессом
+    (`total/known/learning`). Клик по блоку → `GET /learning/words?band=top-100&offset=&limit=` → `WordPage`;
+    внутри блока группируй по `WordLeaf.topics` (пусто → «Разное»). Без `band` — весь список по частоте.
+  - **Карточка:** `GET /learning/words/{id}` (id = `en:go`) → `WordCard` с `variants[]` (по частям речи:
+    переводы/формы/синонимы/…) + `ipa` + `status`.
+  - **Мастерство (2 действия):** `PUT /learning/mastery/{id}` (id = лемма), тело `{ status }` — `KNOWN` (Знаю)
+    или `LEARNING` (Учить); не отмечено = `UNKNOWN`. `GET /learning/study` — очередь «Учить» (мои `LEARNING`).
+    `GET /learning/mastery` — все мои отметки (`MasteryView.wordId`).
+  - **Поиск:** `GET /learning/search?q=` → `WordRef[]`. **Темы (вторичная навигация):** `GET /learning/topics`
+    / `GET /learning/topics/{id}` (`TopicView.words`).
+- **Грамматика (ствол сада):** `GET /learning/grammar` — весь ствол по CEFR, у каждого `prerequisites`;
+  `GET /learning/grammar/{id}` — + `illustratedBy` (слова-примеры, `WordRef`).
+- **Транскрипция:** `WordCard.ipa` — IPA (амер., напр. `/ɡoʊ/`); может быть `null`.
 
 ## 4. Рантайм-спека (опционально)
 

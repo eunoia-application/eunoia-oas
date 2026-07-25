@@ -5,7 +5,7 @@ info:
     Учебное ядро Eunoia — канонический граф знаний (Neo4j) + персональный оверлей мастерства
     (garden, Postgres). Единица обучения — СЛОВО (лемма): его части речи (variants) склеены
     в одну карточку, мастерство отмечается по лемме. Чтение графа + garden-view (структура × статус).
-  version: 3.1.0
+  version: 3.2.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -15,6 +15,21 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /learning/tree:
+    get:
+      summary: Снапшот сада — всё для рендера дерева знаний одним вызовом
+      description: >-
+        Агрегат прогресса: словарь (листья), темы (ветки), активность (погода/сезоны/стрик).
+        Отдаём непрерывные числа — маппинг в геометрию дерева (стадии/высота/цвет) целиком на фронте.
+      operationId: getTree
+      tags: [Learning]
+      responses:
+        '200':
+          description: Снапшот прогресса пользователя для дерева
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TreeSnapshot' }
+
   /learning/bands:
     get:
       summary: Блоки топ-слов по частоте (уровни) с моим прогрессом
@@ -326,6 +341,52 @@ components:
         words:
           type: array
           items: { $ref: '#/components/schemas/WordLeaf' }
+
+    TreeSnapshot:
+      type: object
+      description: >-
+        Всё для рендера дерева знаний одним вызовом. Числа непрерывные — стадии/высоту/цвет
+        считает фронт. Поля растут по вехам (Ф1 добавит grammar, Ф2 — srs); фронт деградирует мягко.
+      required: [vocabulary, topics]
+      properties:
+        vocabulary: { $ref: '#/components/schemas/TreeVocabulary' }
+        topics:
+          type: array
+          description: прогресс по веткам сада (ветки = темы)
+          items: { $ref: '#/components/schemas/TreeTopic' }
+        activity: { $ref: '#/components/schemas/TreeActivity' }
+
+    TreeVocabulary:
+      type: object
+      description: Листья — суммарный словарный прогресс по всем словам графа.
+      required: [known, learning, total]
+      properties:
+        known: { type: integer, description: "отмечено «знаю»" }
+        learning: { type: integer, description: "отмечено «учить»" }
+        total: { type: integer, description: "всего слов в графе" }
+
+    TreeTopic:
+      type: object
+      description: Ветка сада — тема и мой прогресс по ней (для плотности/роста ветки).
+      required: [id, name, known, total]
+      properties:
+        id: { type: string, example: "animals" }
+        name: { type: string, example: "Животные" }
+        slug: { type: string }
+        known: { type: integer }
+        learning: { type: integer }
+        total: { type: integer }
+
+    TreeActivity:
+      type: object
+      description: >-
+        История занятий — для погоды/сезонов/цветения. streak — дней подряд с активностью,
+        daysActive30 — активных дней за последние 30. Пусто/нули, если истории ещё нет.
+      required: [streak, daysActive30]
+      properties:
+        streak: { type: integer, description: "дней подряд с активностью (включая сегодня)" }
+        lastActiveDate: { type: string, format: date, nullable: true }
+        daysActive30: { type: integer, description: "активных дней за последние 30" }
 
     TopicRef:
       type: object
