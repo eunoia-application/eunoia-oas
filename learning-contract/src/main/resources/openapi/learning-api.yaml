@@ -5,7 +5,7 @@ info:
     Учебное ядро Eunoia — канонический граф знаний (Neo4j) + персональный оверлей мастерства
     (garden, Postgres). Единица обучения — СЛОВО (лемма): его части речи (variants) склеены
     в одну карточку, мастерство отмечается по лемме. Чтение графа + garden-view (структура × статус).
-  version: 3.2.0
+  version: 3.3.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -189,6 +189,31 @@ paths:
         '404':
           description: Правило не найдено
 
+  /learning/grammar/mastery/{id}:
+    put:
+      summary: Отметить владение правилом (знаю/учу) — по id правила
+      operationId: setGrammarMastery
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          example: "past-simple"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MasteryRequest' }
+      responses:
+        '200':
+          description: Правило с обновлённым моим статусом
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GrammarView' }
+        '404':
+          description: Правило не найдено
+
   /learning/mastery:
     get:
       summary: Мой прогресс (что отмечено)
@@ -355,6 +380,7 @@ components:
           description: прогресс по веткам сада (ветки = темы)
           items: { $ref: '#/components/schemas/TreeTopic' }
         activity: { $ref: '#/components/schemas/TreeActivity' }
+        grammar: { $ref: '#/components/schemas/TreeGrammar' }
 
     TreeVocabulary:
       type: object
@@ -388,6 +414,17 @@ components:
         lastActiveDate: { type: string, format: date, nullable: true }
         daysActive30: { type: integer, description: "активных дней за последние 30" }
 
+    TreeGrammar:
+      type: object
+      description: >-
+        Прогресс по грамматике (ствол сада) — из него фронт считает ВЫСОТУ дерева. Отдаём счётчики;
+        взвешивание по CEFR (если нужно) — на фронте. Поле необязательно (появилось в 3.3.0).
+      required: [known, learning, total]
+      properties:
+        known: { type: integer, description: "правил отмечено «знаю»" }
+        learning: { type: integer, description: "правил отмечено «учить»" }
+        total: { type: integer, description: "всего правил в стволе" }
+
     TopicRef:
       type: object
       required: [id, name]
@@ -412,6 +449,7 @@ components:
         id: { type: string }
         name: { type: string }
         cefr: { $ref: '#/components/schemas/Cefr' }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
         prerequisites:
           type: array
           description: id правил, которые желательно знать раньше (порядок изучения)

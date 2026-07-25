@@ -1,6 +1,6 @@
 {
   "name": "@eunoia-application/api-types",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Eunoia API — TypeScript types generated from the OpenAPI contracts (single package covering the whole REST surface). Version is auto-synced from the parent pom <revision> by scripts/build-types.mjs — do not bump by hand.",
   "types": "dist/index.d.ts",
   "exports": {
