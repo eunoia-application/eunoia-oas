@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: User API
   description: User profile management for Eunoia (Design B — identity lives in auth, profile lives here)
-  version: 2.1.0
+  version: 2.2.0
   contact:
     name: Eunoia Team
     url: https://github.com/eunoia-application
@@ -231,8 +231,9 @@ components:
           format: uri
           nullable: true
           description: >-
-            URL аватара относительно API-базы. Для загруженного файла — /users/{userId}/avatar
-            (см. GET). Может быть и внешним URL, если задан напрямую через PUT /users/me.
+            Готовый URL аватара для <img src>. Для загруженного файла — полный URL до gateway
+            (напр. http://localhost:7777/api/v1/users/{userId}/avatar). Может быть и внешним URL,
+            если задан напрямую через PUT /users/me.
         bio:
           type: string
           maxLength: 500

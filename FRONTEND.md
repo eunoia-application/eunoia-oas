@@ -1,7 +1,7 @@
 # Eunoia API types для фронтенда
 
 Фронт потребляет **один** npm-пакет — `@eunoia-application/api-types`. В нём уже лежат
-сгенерённые TypeScript-типы на весь REST API (эндпоинты auth/user + общие схемы).
+сгенерённые TypeScript-типы на весь REST API (эндпоинты auth/user/learning + общие схемы).
 **Кодогенерации на стороне фронта не нужно** — типы готовы к импорту.
 
 > Почему один пакет, а не 3 по числу Maven-модулей: фронт — одно приложение,
@@ -57,6 +57,16 @@ type AuthResponse = components['schemas']['AuthResponse']; // ответ login/r
 type AuthUser = components['schemas']['AuthUser'];         // слим-идентичность в ответе auth
 type UserProfile = components['schemas']['UserProfile'];   // полный профиль (service-user)
 type UserSettings = components['schemas']['UserSettings'];
+
+// Учебное ядро (service-learning). Единица — СЛОВО (лемма); id вида "en:go":
+type WordCard = components['schemas']['WordCard'];           // карточка: ipa + variants[POS] (переводы/формы/связи) + мой статус
+type WordVariant = components['schemas']['WordVariant'];     // одна часть речи слова внутри карточки
+type WordLeaf = components['schemas']['WordLeaf'];           // слово-лист (блок/тема/список): pos[] + topics[] + статус
+type WordPage = components['schemas']['WordPage'];           // страница списка слов (total/offset/limit/words)
+type Band = components['schemas']['Band'];                   // блок топ-слов (уровень) + прогресс (total/known/learning)
+type TopicView = components['schemas']['TopicView'];         // ветка темы: тема + слова (words)
+type GrammarView = components['schemas']['GrammarView'];     // правило: cefr + prerequisites + illustratedBy (слова-примеры)
+type MasteryStatus = components['schemas']['MasteryStatus']; // KNOWN | LEARNING | UNKNOWN
 ```
 
 Удобно завести барель-алиасы у себя (`src/shared/api/schema.ts`):
@@ -106,8 +116,29 @@ export async function getMyProfile() {
 
 > Пути в типах — как в контрактах (`/auth/*`, `/users/*`), без хоста.
 > Базовый URL задаёт axios-клиент (`baseURL` — через gateway, напр. `/api/v1`).
-> Публичные auth-эндпоинты (`/auth/login`, `/auth/register`, …) не требуют токена;
-> остальные — `Bearer <JWT>`.
+> Публичные auth-эндпоинты (`/auth/login`, `/auth/register`, `/auth/refresh`, …) не требуют токена;
+> остальные — `Bearer <JWT>`. На `401` дёргай `/auth/refresh` (с `refreshToken` из ответа login/register)
+> и повтори запрос.
+
+### Заметки по доменам
+
+- **Аватар:** `UserProfile.avatarUrl` — готовый URL для `<img src>` (для загруженного файла бэк отдаёт
+  полный URL через gateway, вставляй как есть). Загрузка — `POST /users/me/avatar` (multipart, поле `file`,
+  png/jpg/webp ≤ 2 МБ); публичная отдача байтов `GET /users/{id}/avatar` — без токена.
+- **Учебное ядро (`/learning/*`, всё под токеном). Единица — СЛОВО (лемма, id вида `en:go`):**
+  - **Навигация — блоки топ-слов:** `GET /learning/bands` → уровни (топ-100/…/5001–10000) с прогрессом
+    (`total/known/learning`). Клик по блоку → `GET /learning/words?band=top-100&offset=&limit=` → `WordPage`;
+    внутри блока группируй по `WordLeaf.topics` (пусто → «Разное»). Без `band` — весь список по частоте.
+  - **Карточка:** `GET /learning/words/{id}` (id = `en:go`) → `WordCard` с `variants[]` (по частям речи:
+    переводы/формы/синонимы/…) + `ipa` + `status`.
+  - **Мастерство (2 действия):** `PUT /learning/mastery/{id}` (id = лемма), тело `{ status }` — `KNOWN` (Знаю)
+    или `LEARNING` (Учить); не отмечено = `UNKNOWN`. `GET /learning/study` — очередь «Учить» (мои `LEARNING`).
+    `GET /learning/mastery` — все мои отметки (`MasteryView.wordId`).
+  - **Поиск:** `GET /learning/search?q=` → `WordRef[]`. **Темы (вторичная навигация):** `GET /learning/topics`
+    / `GET /learning/topics/{id}` (`TopicView.words`).
+- **Грамматика (ствол сада):** `GET /learning/grammar` — весь ствол по CEFR, у каждого `prerequisites`;
+  `GET /learning/grammar/{id}` — + `illustratedBy` (слова-примеры, `WordRef`).
+- **Транскрипция:** `WordCard.ipa` — IPA (амер., напр. `/ɡoʊ/`); может быть `null`.
 
 ## 4. Рантайм-спека (опционально)
 
@@ -126,7 +157,7 @@ import spec from '@eunoia-application/api-types/openapi.json' with { type: 'json
 Pin как обычно:
 
 ```json
-{ "devDependencies": { "@eunoia-application/api-types": "^2.0.0" } }
+{ "devDependencies": { "@eunoia-application/api-types": "^2.4.0" } }
 ```
 
 ## Troubleshooting

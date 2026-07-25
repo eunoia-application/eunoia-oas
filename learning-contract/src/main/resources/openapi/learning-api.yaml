@@ -1,0 +1,480 @@
+openapi: 3.0.0
+info:
+  title: Learning API
+  description: >-
+    Учебное ядро Eunoia — канонический граф знаний (Neo4j) + персональный оверлей мастерства
+    (garden, Postgres). Единица обучения — СЛОВО (лемма): его части речи (variants) склеены
+    в одну карточку, мастерство отмечается по лемме. Чтение графа + garden-view (структура × статус).
+  version: 3.3.0
+  contact:
+    name: Eunoia Team
+    url: https://github.com/eunoia-application
+tags:
+  - name: Learning
+    description: Граф знаний и прогресс пользователя
+security:
+  - bearerAuth: []
+paths:
+  /learning/tree:
+    get:
+      summary: Снапшот сада — всё для рендера дерева знаний одним вызовом
+      description: >-
+        Агрегат прогресса: словарь (листья), темы (ветки), активность (погода/сезоны/стрик).
+        Отдаём непрерывные числа — маппинг в геометрию дерева (стадии/высота/цвет) целиком на фронте.
+      operationId: getTree
+      tags: [Learning]
+      responses:
+        '200':
+          description: Снапшот прогресса пользователя для дерева
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TreeSnapshot' }
+
+  /learning/bands:
+    get:
+      summary: Блоки топ-слов по частоте (уровни) с моим прогрессом
+      operationId: getBands
+      tags: [Learning]
+      responses:
+        '200':
+          description: Уровни (топ-100, 101–500, …) с total/known/learning
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Band' }
+
+  /learning/words:
+    get:
+      summary: Слова по частоте (весь список или блок band=…), с моим статусом
+      operationId: listWords
+      tags: [Learning]
+      parameters:
+        - name: band
+          in: query
+          description: id блока (напр. top-100). Пусто — весь список по частоте.
+          schema: { type: string }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100 }
+      responses:
+        '200':
+          description: Страница слов (в блоке или общая), отсортированных по частоте
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WordPage' }
+
+  /learning/study:
+    get:
+      summary: Мой список на изучение (слова, отмеченные «Учить»)
+      operationId: getStudyList
+      tags: [Learning]
+      responses:
+        '200':
+          description: Слова со статусом LEARNING
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WordLeaf' }
+
+  /learning/words/{id}:
+    get:
+      summary: Карточка слова (лемма + части речи внутри + мой статус)
+      operationId: getWord
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          example: "en:go"
+      responses:
+        '200':
+          description: Слово с разновидностями (variants), связями и моим статусом
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WordCard' }
+        '404':
+          description: Слово не найдено
+
+  /learning/search:
+    get:
+      summary: Поиск слов по префиксу леммы
+      operationId: searchWords
+      tags: [Learning]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Найденные слова
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WordRef' }
+
+  /learning/topics:
+    get:
+      summary: Корневые темы (верх дерева)
+      operationId: getTopicRoots
+      tags: [Learning]
+      responses:
+        '200':
+          description: Верхний уровень тем
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TopicRef' }
+
+  /learning/topics/{id}:
+    get:
+      summary: Ветка сада — слова темы с моей раскраской
+      operationId: getTopicView
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Тема и её слова со статусом мастерства
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TopicView' }
+        '404':
+          description: Тема не найдена
+
+  /learning/grammar:
+    get:
+      summary: Грамматика — весь ствол (правила по возрастанию CEFR)
+      operationId: listGrammar
+      tags: [Learning]
+      responses:
+        '200':
+          description: Список правил
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GrammarView' }
+
+  /learning/grammar/{id}:
+    get:
+      summary: Грамматическое правило
+      operationId: getGrammar
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Правило
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GrammarView' }
+        '404':
+          description: Правило не найдено
+
+  /learning/grammar/mastery/{id}:
+    put:
+      summary: Отметить владение правилом (знаю/учу) — по id правила
+      operationId: setGrammarMastery
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          example: "past-simple"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MasteryRequest' }
+      responses:
+        '200':
+          description: Правило с обновлённым моим статусом
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GrammarView' }
+        '404':
+          description: Правило не найдено
+
+  /learning/mastery:
+    get:
+      summary: Мой прогресс (что отмечено)
+      operationId: getMyMastery
+      tags: [Learning]
+      responses:
+        '200':
+          description: Отметки мастерства
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MasteryView' }
+
+  /learning/mastery/{id}:
+    put:
+      summary: Отметить владение словом (знаю/учу/не знаю) — по лемме
+      operationId: setMastery
+      tags: [Learning]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          example: "en:go"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MasteryRequest' }
+      responses:
+        '200':
+          description: Обновлённая отметка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MasteryView' }
+
+components:
+  schemas:
+    PartOfSpeech:
+      type: string
+      enum: [NOUN, VERB, ADJECTIVE, ADVERB, PRONOUN, PREPOSITION, CONJUNCTION, DETERMINER, INTERJECTION, NUMERAL, OTHER]
+    Cefr:
+      type: string
+      enum: [A1, A2, B1, B2, C1, C2]
+    MasteryStatus:
+      type: string
+      enum: [KNOWN, LEARNING, UNKNOWN]
+      description: Статус владения. Отсутствие отметки трактуем как UNKNOWN.
+
+    Form:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, example: "went" }
+        feature: { type: string, nullable: true, example: "past" }
+    Translation:
+      type: object
+      required: [text, lang]
+      properties:
+        text: { type: string, example: "идти" }
+        lang: { type: string, example: "ru" }
+
+    WordRef:
+      type: object
+      description: Лёгкая ссылка на слово (лемма). id — ключ леммы, pos — конкретная часть речи ссылки.
+      required: [id, lemma]
+      properties:
+        id: { type: string, example: "en:go" }
+        lemma: { type: string, example: "go" }
+        pos: { $ref: '#/components/schemas/PartOfSpeech' }
+
+    WordVariant:
+      type: object
+      description: Одна часть речи слова — свои переводы, формы и связи.
+      required: [pos]
+      properties:
+        pos: { $ref: '#/components/schemas/PartOfSpeech' }
+        cefr: { $ref: '#/components/schemas/Cefr' }
+        freqRank: { type: integer, nullable: true }
+        translations:
+          type: array
+          items: { $ref: '#/components/schemas/Translation' }
+        forms:
+          type: array
+          items: { $ref: '#/components/schemas/Form' }
+        synonyms:
+          type: array
+          items: { $ref: '#/components/schemas/WordRef' }
+        antonyms:
+          type: array
+          items: { $ref: '#/components/schemas/WordRef' }
+        hypernyms:
+          type: array
+          items: { $ref: '#/components/schemas/WordRef' }
+
+    WordCard:
+      type: object
+      description: Карточка слова = лемма + её части речи (variants) + мой статус (по лемме).
+      required: [id, lemma, status]
+      properties:
+        id: { type: string, example: "en:go" }
+        lemma: { type: string }
+        ipa: { type: string, nullable: true, description: "Транскрипция IPA (амер.), напр. /ɡoʊ/" }
+        freqRank: { type: integer, nullable: true }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+        variants:
+          type: array
+          items: { $ref: '#/components/schemas/WordVariant' }
+
+    WordLeaf:
+      type: object
+      description: Слово-лист (в блоке, теме или списке) с моим статусом — из этого фронт красит сад.
+      required: [id, lemma, status]
+      properties:
+        id: { type: string, example: "en:go" }
+        lemma: { type: string }
+        pos:
+          type: array
+          description: Части речи, которые есть у слова
+          items: { $ref: '#/components/schemas/PartOfSpeech' }
+        cefr: { $ref: '#/components/schemas/Cefr' }
+        topics:
+          type: array
+          description: Темы (категории) слова — для разбивки внутри блока; пусто → «Разное»
+          items: { $ref: '#/components/schemas/TopicRef' }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+
+    Band:
+      type: object
+      description: Блок топ-слов по частоте (уровень) с моим прогрессом.
+      required: [id, label, fromRank, toRank, total, known, learning]
+      properties:
+        id: { type: string, example: "top-100" }
+        label: { type: string, example: "Топ-100" }
+        fromRank: { type: integer, example: 1 }
+        toRank: { type: integer, example: 100 }
+        total: { type: integer, description: "слов в блоке" }
+        known: { type: integer, description: "сколько отмечено «знаю»" }
+        learning: { type: integer, description: "сколько отмечено «учить»" }
+
+    WordPage:
+      type: object
+      description: Страница списка всех слов (по частоте) — для бандов «топ-100 / 100–200 / …».
+      required: [words, total, offset, limit]
+      properties:
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        words:
+          type: array
+          items: { $ref: '#/components/schemas/WordLeaf' }
+
+    TreeSnapshot:
+      type: object
+      description: >-
+        Всё для рендера дерева знаний одним вызовом. Числа непрерывные — стадии/высоту/цвет
+        считает фронт. Поля растут по вехам (Ф1 добавит grammar, Ф2 — srs); фронт деградирует мягко.
+      required: [vocabulary, topics]
+      properties:
+        vocabulary: { $ref: '#/components/schemas/TreeVocabulary' }
+        topics:
+          type: array
+          description: прогресс по веткам сада (ветки = темы)
+          items: { $ref: '#/components/schemas/TreeTopic' }
+        activity: { $ref: '#/components/schemas/TreeActivity' }
+        grammar: { $ref: '#/components/schemas/TreeGrammar' }
+
+    TreeVocabulary:
+      type: object
+      description: Листья — суммарный словарный прогресс по всем словам графа.
+      required: [known, learning, total]
+      properties:
+        known: { type: integer, description: "отмечено «знаю»" }
+        learning: { type: integer, description: "отмечено «учить»" }
+        total: { type: integer, description: "всего слов в графе" }
+
+    TreeTopic:
+      type: object
+      description: Ветка сада — тема и мой прогресс по ней (для плотности/роста ветки).
+      required: [id, name, known, total]
+      properties:
+        id: { type: string, example: "animals" }
+        name: { type: string, example: "Животные" }
+        slug: { type: string }
+        known: { type: integer }
+        learning: { type: integer }
+        total: { type: integer }
+
+    TreeActivity:
+      type: object
+      description: >-
+        История занятий — для погоды/сезонов/цветения. streak — дней подряд с активностью,
+        daysActive30 — активных дней за последние 30. Пусто/нули, если истории ещё нет.
+      required: [streak, daysActive30]
+      properties:
+        streak: { type: integer, description: "дней подряд с активностью (включая сегодня)" }
+        lastActiveDate: { type: string, format: date, nullable: true }
+        daysActive30: { type: integer, description: "активных дней за последние 30" }
+
+    TreeGrammar:
+      type: object
+      description: >-
+        Прогресс по грамматике (ствол сада) — из него фронт считает ВЫСОТУ дерева. Отдаём счётчики;
+        взвешивание по CEFR (если нужно) — на фронте. Поле необязательно (появилось в 3.3.0).
+      required: [known, learning, total]
+      properties:
+        known: { type: integer, description: "правил отмечено «знаю»" }
+        learning: { type: integer, description: "правил отмечено «учить»" }
+        total: { type: integer, description: "всего правил в стволе" }
+
+    TopicRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+
+    TopicView:
+      type: object
+      required: [topic]
+      properties:
+        topic: { $ref: '#/components/schemas/TopicRef' }
+        words:
+          type: array
+          items: { $ref: '#/components/schemas/WordLeaf' }
+
+    GrammarView:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        cefr: { $ref: '#/components/schemas/Cefr' }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+        prerequisites:
+          type: array
+          description: id правил, которые желательно знать раньше (порядок изучения)
+          items: { type: string }
+        illustratedBy:
+          type: array
+          description: слова-примеры правила (заполняется в детали; в списке пусто)
+          items: { $ref: '#/components/schemas/WordRef' }
+
+    MasteryRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+
+    MasteryView:
+      type: object
+      required: [wordId, status]
+      properties:
+        wordId: { type: string, example: "en:go" }
+        status: { $ref: '#/components/schemas/MasteryStatus' }
+        updatedAt: { type: string, format: date-time }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
